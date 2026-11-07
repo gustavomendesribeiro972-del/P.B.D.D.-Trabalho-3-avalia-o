@@ -1,0 +1,28 @@
+Criptografia de dados SQL:
+
+"Uma senha é mais segura se for mais difícil de adivinhar ou quebrar por força bruta. Em teoria, uma senha é mais difícil de adivinhar se for mais longa. Também é mais difícil de adivinhar se usar um conjunto maior de caracteres (por exemplo, dígitos, letras maiúsculas e minúsculas e símbolos)."
+Supabase Documentos, (https://supabase-com.translate.goog/docs/guides/auth/password-security?_x_tr_sl=en&_x_tr_tl=pt&_x_tr_hl=pt&_x_tr_pto=tc&_x_tr_hist=true)
+
+Dados sensíveis dentro dos bancos de dados, como CPF, senha e números de cartão de creditos e outros, necessitam de seguranã reforçada.
+Mas antes de botar isso em pratica no SQL, tem alguns conceitos que estão na proteção destes dados:
+
+
+1. Schemas: public vs private (Os Ambientes do Prédio)
+
+No PostgreSQL, um Schema funciona como uma pasta no seu computador para organizar tabelas.
+• O Schema public: É a recepção e as salas comerciais abertas do prédio. Tudo o que você cria por padrão no Supabase vai para o public. Suas APIs do frontend (React, Flutter, etc.) conseguem enxergar e tentar acessar as tabelas que estão aqui.
+• Os Schemas "Privados" (como o auth): São os cofres ou a sala da administração. A API do frontend não consegue ler essas tabelas diretamente por motivos de segurança. É por isso que as senhas ficam escondidas no schema auth e nós criamos uma cópia do usuário (como o nome) no schema public.
+
+2. Triggers (Os Seguranças Automatizados)
+
+Um Trigger (Gatilho) é um automatizador. Você diz ao banco de dados: "Sempre que acontecer X na tabela A, execute a ação Y na tabela B".
+
+🧠 Quando usar?
+
+Sempre que uma ação em uma tabela exigir uma reação imediata e obrigatória em outra. O caso mais comum é o que fizemos: Usuário se cadastrou no auth.users ➡️ Criar automaticamente o perfil dele no public.profiles.
+
+💻 Como usar (Sintaxe Sem Erros):
+
+Criar um Trigger sempre exige duas etapas no SQL Editor:
+1. Criar a Função: O código que diz o que deve ser feito.
+2. Criar o Gatilho: Que diz quando aquela função deve ser disparada.

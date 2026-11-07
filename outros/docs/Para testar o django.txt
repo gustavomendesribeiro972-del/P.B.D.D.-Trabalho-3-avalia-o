@@ -1,0 +1,12 @@
+e-commerce testes:
+
+cd C:\Users\User\Pictures\celllola\pasion del gavilanes\2026.2\SQL\e-commerce
+
+C:\Users\User\Pictures\celllola\pasion del gavilanes\2026.2\SQL\e-commerce\venv\Scripts>activate
+
+cd ..
+cd..
+
+(venv) C:\Users\User\Pictures\celllola\pasion del gavilanes\2026.2\SQL\e-commerce>python manage.py check
+
+(venv) C:\Users\User\Pictures\celllola\pasion del gavilanes\2026.2\SQL\e-commerce>python manage.py runserver
