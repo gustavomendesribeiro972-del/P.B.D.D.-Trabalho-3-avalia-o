@@ -1,23 +1,22 @@
-import json
-from datetime import datetime
-
+import json, sys
+from pathlib import Path
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QStackedWidget, QTableWidget,
     QTableWidgetItem, QMessageBox, QHeaderView, QFrame, QFormLayout,
-    QTextEdit, QScrollArea, QGroupBox    
+    QTextEdit, QGroupBox    
 )
 
 import bcrypt
 
-from databases.supabase_client import(
-    supabase,
-    testar_conexao
-)
-from databases.mongo import products_collection
+from databases.supabase_client import ( supabase, testar_conexao )
+from databases.mongo import (products_collection, teste_mongo)
 from databases.redis_client import redis_client
 
+BASE_DIR = Path(__file__).resolve().parent
+ICON_PATH = BASE_DIR / "static" / "images" / "icone.ico"
 
 #Estilo:
 ESTILO = """
@@ -73,13 +72,6 @@ QHeaderView::section {
 
 #funções:
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(
-        password.encode("utf-8"),
-        bcrypt.gensalt()
-    ).decode("utf-8")
-
-
 def verify_password(password: str, password_hash: str) -> bool:
     try:
         return bcrypt.checkpw(
@@ -129,39 +121,40 @@ class TelaAutenticacao(QWidget):
         subtitle.setObjectName("subtitle")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+
+        self.nome_input = QLineEdit()
+        self.nome_input.setPlaceholderText("Nome de usuário")
+
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("E-mail")
 
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Senha")
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-
-        self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Nome de usuário")
+        self.senha_input = QLineEdit()
+        self.senha_input.setPlaceholderText("Senha")
+        self.senha_input.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.login_button = QPushButton("Entrar")
-        self.register_button = QPushButton("Criar conta")
-        self.register_button.setObjectName("secondary")
+        self.cadastrar_button = QPushButton("Criar conta")
+        self.cadastrar_button.setObjectName("secundario")
 
         self.login_button.clicked.connect(self.login)
-        self.register_button.clicked.connect(self.cadastro)
+        self.cadastrar_button.clicked.connect(self.cadastro)
 
         card_layout.addWidget(title)
         card_layout.addWidget(subtitle)
+        card_layout.addWidget(QLabel("Nome de usuário"))
+        card_layout.addWidget(self.nome_input)
         card_layout.addWidget(QLabel("E-mail"))
         card_layout.addWidget(self.email_input)
         card_layout.addWidget(QLabel("Senha"))
-        card_layout.addWidget(self.password_input)
-        card_layout.addWidget(QLabel("Nome de usuário"))
-        card_layout.addWidget(self.name_input)
+        card_layout.addWidget(self.senha_input)
         card_layout.addWidget(self.login_button)
-        card_layout.addWidget(self.register_button)
+        card_layout.addWidget(self.cadastrar_button)
 
         layout.addWidget(card)
 
     def login(self):
         email = self.email_input.text().strip()
-        password = self.password_input.text()
+        password = self.senha_input.text().strip()
 
         if not email or not password:
             show_error(self, "Preencha e-mail e senha.")
@@ -182,6 +175,10 @@ class TelaAutenticacao(QWidget):
                 .execute()
             )
 
+            if profile.data is None:
+                show_error(self, "Perfil não encontrado. Verifique seu e-mail...")
+                return
+
             self.main_window.current_user = profile.data
             self.main_window.go_main()
             show_info(self, f"Bem-vindo, {profile.data['nome_usuario']}!")
@@ -190,11 +187,11 @@ class TelaAutenticacao(QWidget):
             show_error(self, f"Falha no login:\n{e}")
 
     def cadastro(self):
+        username = self.nome_input.text().strip()
         email = self.email_input.text().strip()
-        password = self.password_input.text()
-        username = self.name_input.text().strip()
+        senha = self.senha_input.text()
 
-        if not email or not password or not username:
+        if not email or not senha or not username:
             show_error(self, "Preencha todos os campos.")
             return
 
@@ -205,22 +202,28 @@ class TelaAutenticacao(QWidget):
         try:
             auth_response = supabase.auth.sign_up({
                 "email": email,
-                "password": password
+                "password": senha
             })
 
-            supabase.table("perfil").insert({
-                "nome_usuario": username,
-                "email": email,
-                "senha_hash": hash_password(password)
-            }).execute()
+            if auth_response:
+                supabase.table("perfil").insert({
+                    "nome_usuario": username,
+                    "email": email
+                }).execute()
 
-            show_info(
-                self,
-                "Conta criada com sucesso!\nConfirme o e-mail, se solicitado pelo Supabase."
-            )
+                show_info(
+                    self,
+                    "Conta criada com sucesso!"
+                )
+            else:
+                print("Deu erro: ", auth_response)
 
         except Exception as e:
-            show_error(self, f"Falha no cadastro:\n{e}")
+            if "rate limit" in str(e).lower():
+                show_error(self, "Limite de cadastros atingido. Tente novamente em alguns minutos.")
+            else:
+                show_error(self, f"Falha no cadastro:\n{e}")
+
 
 
 #Tela Principal:
@@ -252,8 +255,8 @@ class TelaPrincipal(QWidget):
         logout_button = QPushButton("Sair")
         logout_button.setObjectName("danger")
 
-        profile_button.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        company_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        profile_button.clicked.connect(self.main_window.go_profile)
+        company_button.clicked.connect(self.main_window.go_companies)
         logout_button.clicked.connect(self.logout)
 
         buttons.addWidget(profile_button)
@@ -293,57 +296,50 @@ class TelaPrincipal(QWidget):
             pass
 
         self.main_window.current_user = None
+        self.welcome_label.setText("Produtos disponíveis")
         self.stack.setCurrentIndex(0)
 
     def carregar_produtos(self):
         try:
-            cached = redis_client.get("centro_mercados:produtos")
+            # FIX: força refresh limpando o cache
+            redis_client.delete("centro_mercados:produtos")
 
-            if cached:
-                products = json.loads(cached)
-            else:
-                response = (products_collection().find().sort("criado_em", -1))
+            response = products_collection.find().sort("criado_em", -1)  # FIX: sem ()
 
-                products = []
-                for product in response:
-                    products.append({
-                        "nome": product.get("nome", ""),
-                        "descricao": product.get("descricao", ""),
-                        "preco": product.get("preco", 0),
-                        "estoque": product.get("estoque", 0),
-                        "empresa_id": product.get("empresa_id")
-                    })
+            products = []
+            for product in response:
+                products.append({
+                    "nome": product.get("nome", ""),
+                    "descricao": product.get("descricao", ""),
+                    "preco": product.get("preco", 0),
+                    "estoque": product.get("estoque", 0),
+                    "empresa_id": product.get("empresa_id")
+                })
 
-                Database.redis.set(
-                    "centro_mercados:produtos",
-                    json.dumps(products, default=str),
-                    ex=60
-                )
+            # FIX: removido default=str (inútil)
+            redis_client.set(
+                "centro_mercados:produtos",
+                json.dumps(products),
+                ex=60
+            )
 
-            self.products_table.setRowCount(0)
-
-            for product in products:
-                row = self.products_table.rowCount()
-                self.products_table.insertRow(row)
-
-                self.products_table.setItem(
-                    row, 0, QTableWidgetItem(str(product.get("nome", "")))
-                )
-                self.products_table.setItem(
-                    row, 1, QTableWidgetItem(str(product.get("descricao", "")))
-                )
-                self.products_table.setItem(
-                    row, 2, QTableWidgetItem(f"R$ {product.get('preco', 0):.2f}")
-                )
-                self.products_table.setItem(
-                    row, 3, QTableWidgetItem(str(product.get("estoque", 0)))
-                )
-                self.products_table.setItem(
-                    row, 4, QTableWidgetItem(str(product.get("empresa_id", "")))
-                )
+            self._preencher_tabela(products)
 
         except Exception as e:
             show_error(self, f"Erro ao carregar produtos:\n{e}")
+
+    def _preencher_tabela(self, products):
+        self.products_table.setRowCount(0)
+        for product in products:
+            row = self.products_table.rowCount()
+            self.products_table.insertRow(row)
+            self.products_table.setItem(row, 0, QTableWidgetItem(str(product.get("nome", ""))))
+            self.products_table.setItem(row, 1, QTableWidgetItem(str(product.get("descricao", ""))))
+            self.products_table.setItem(row, 2, QTableWidgetItem(f"R$ {product.get('preco', 0):.2f}"))
+            self.products_table.setItem(row, 3, QTableWidgetItem(str(product.get("estoque", 0))))
+            self.products_table.setItem(row, 4, QTableWidgetItem(str(product.get("empresa_id", ""))))
+
+
 
 # ==============================
 # TELA DE PRODUTOS
@@ -406,11 +402,7 @@ class ProductsWindow(QWidget):
             if term:
                 query = {"nome": {"$regex": term, "$options": "i"}}
 
-            products = list(
-                products_collection()
-                .find(query)
-                .sort("nome", 1)
-            )
+            products = list(products_collection.find(query).sort("nome", 1))
 
             self.table.setRowCount(0)
 
@@ -657,10 +649,17 @@ class App(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CentroMercados")
+        self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.resize(1100, 700)
         self.setStyleSheet(ESTILO)
 
         self.current_user = None
+
+        if not testar_conexao() and teste_mongo():
+            QMessageBox.warning(
+                self, "Atenção",
+                "Alguns serviços (MongoDB/Redis) podem estar indisponíveis."
+            )
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
@@ -678,7 +677,7 @@ class App(QMainWindow):
         self.stack.addWidget(self.companies_window)
 
     def go_main(self):
-        self.main_window.load_products()
+        self.main_window.carregar_produtos()
         self.stack.setCurrentIndex(1)
 
     def go_products(self):
@@ -695,7 +694,15 @@ class App(QMainWindow):
 
 
 def main():
+    import platform
+
+    if platform.system() == "Windows":
+        import ctypes
+        myappid = "unifsa.centromercados.v.1.0"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     app = QApplication([])
+    app.setWindowIcon(QIcon(str(ICON_PATH)))
 
     window = App()
     window.show()
