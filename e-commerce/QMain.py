@@ -1,13 +1,15 @@
-import json
-import sys
+import json, sys, os
+import urllib.parse
 from pathlib import Path
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
+from dotenv import load_dotenv
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QIcon, QDesktopServices
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QStackedWidget, QTableWidget,
     QTableWidgetItem, QMessageBox, QHeaderView, QFrame, QFormLayout,
-    QTextEdit, QGroupBox, QGridLayout
+    QTextEdit, QGroupBox, QGridLayout, QGraphicsBlurEffect, QSpinBox,
+    QScrollArea
 )
 
 import bcrypt
@@ -19,88 +21,163 @@ from databases.redis_client import redis_client
 BASE_DIR = Path(__file__).resolve().parent
 ICON_PATH = BASE_DIR / "static" / "images" / "icon.ico"
 
+load_dotenv(BASE_DIR / "config.env")
+WHATSAPP_NUMERO = os.getenv("WHATSAPP_NUMERO", "")
+
 # Estilo global refinado no padrão Figma Clean Blue
 ESTILO = """
 QMainWindow {
-    background-color: #f0f9ff;
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #e0f2fe,
+        stop:0.45 #f0f9ff,
+        stop:1 #dbeafe
+    );
 }
-QLabel#title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #0369a1;
+
+QWidget#background {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #7dd3fc,
+        stop:0.5 #bae6fd,
+        stop:1 #93c5fd
+    );
 }
-QLabel#subtitle {
-    font-size: 13px;
-    color: #0284c7;
+
+QFrame#topbar {
+    background: rgba(255, 255, 255, 120);
+    border: 1px solid rgba(255, 255, 255, 190);
+    border-radius: 16px;
 }
-QLineEdit, QTextEdit {
-    padding: 10px;
-    border: 1.5px solid #bae6fd;
-    border-radius: 10px;
-    background: #ffffff;
+
+QFrame#card {
+    background: rgba(255, 255, 255, 150);
+    border: 1px solid rgba(255, 255, 255, 185);
+    border-radius: 18px;
+}
+
+QLabel {
     color: #0f172a;
 }
-QLineEdit:focus, QTextEdit:focus {
-    border: 1.5px solid #0284c7;
+
+QLabel#title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #075985;
 }
-QPushButton {
-    padding: 9px 16px;
-    border-radius: 10px;
-    border: none;
-    background-color: #0284c7;
-    color: white;
-    font-weight: 600;
-}
-QPushButton:hover {
-    background-color: #0284c7;
-}
-QPushButton#nav_button {
-    background-color: #e0f2fe;
+
+QLabel#subtitle {
+    font-size: 13px;
     color: #0369a1;
-    border: 1px solid #bae6fd;
 }
-QPushButton#nav_button:hover {
-    background-color: #bae6fd;
-}
-QPushButton#danger {
-    background-color: #ef4444;
-}
-QPushButton#danger:hover {
-    background-color: #dc2626;
-}
-QTableWidget {
-    background: #ffffff;
-    border: 1.5px solid #bae6fd;
+
+QLineEdit, QTextEdit, QSpinBox {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 170);
     border-radius: 12px;
-    gridline-color: #e0f2fe;
+    background: rgba(255, 255, 255, 150);
+    color: #0f172a;
+    selection-background-color: #0284c7;
 }
+
+QLineEdit:focus, QTextEdit:focus, QSpinBox:focus {
+    border: 1px solid rgba(2, 132, 199, 190);
+    background: rgba(255, 255, 255, 205);
+}
+
+QPushButton {
+    padding: 9px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 150);
+    background: #ffffff;
+    color: #075985;
+    font-weight: 700;
+}
+
+QPushButton:hover {
+    background: #f8fafc;
+}
+
+QPushButton#nav_button {
+    background: rgba(255, 255, 255, 145);
+    color: #075985;
+    border: 1px solid rgba(255, 255, 255, 185);
+}
+
+QPushButton#nav_button:hover {
+    background: rgba(255, 255, 255, 205);
+}
+
+QPushButton#success {
+    background: rgba(34, 197, 94, 205);
+    border: 1px solid rgba(255, 255, 255, 140);
+    color: white;
+}
+
+QPushButton#success:hover {
+    background: rgba(22, 163, 74, 225);
+}
+
+QPushButton#danger {
+    background: rgba(239, 68, 68, 205);
+    border: 1px solid rgba(255, 255, 255, 140);
+    color: white;
+}
+
+QPushButton#danger:hover {
+    background: rgba(220, 38, 38, 225);
+}
+
+QTableWidget {
+    background: rgba(255, 255, 255, 165);
+    border: 1px solid rgba(255, 255, 255, 170);
+    border-radius: 14px;
+    gridline-color: rgba(224, 242, 254, 190);
+    alternate-background-color: rgba(240, 249, 255, 120);
+}
+
+QTableWidget::item {
+    padding: 8px;
+}
+
+QTableWidget::item:selected {
+    background: rgba(2, 132, 199, 170);
+    color: white;
+}
+
 QHeaderView::section {
-    background-color: #e0f2fe;
-    color: #0369a1;
+    background: rgba(255, 255, 255, 150);
+    color: #075985;
     padding: 10px;
     border: none;
-    font-weight: 600;
+    font-weight: 700;
 }
+
 QGroupBox {
-    background-color: #ffffff;
-    border: 1.5px solid #bae6fd;
-    border-radius: 12px;
-    margin-top: 10px;
-    font-weight: bold;
-    color: #0369a1;
-    padding: 15px;
-}
-QFrame#card {
-    background: #ffffff;
-    border: 1.5px solid #bae6fd;
+    background: rgba(255, 255, 255, 145);
+    border: 1px solid rgba(255, 255, 255, 180);
     border-radius: 14px;
-    padding: 24px;
+    margin-top: 14px;
+    padding: 18px;
+    font-weight: 700;
+    color: #075985;
 }
-QFrame#topbar {
-    background: #ffffff;
-    border: 1.5px solid #bae6fd;
-    border-radius: 12px;
-    padding: 8px 16px;
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(2, 132, 199, 140);
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
 }
 """
 
@@ -111,9 +188,8 @@ def show_info(parent, message: str):
     QMessageBox.information(parent, "Sucesso", message)
 
 
-# ==============================
-# TELA DE AUTENTICAÇÃO (Login / Cadastro)
-# ==============================
+# As Telas:
+
 class TelaAutenticacao(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -197,6 +273,15 @@ class TelaAutenticacao(QWidget):
                 show_error(self, "Perfil não encontrado. Verifique seu e-mail...")
                 return
 
+            user_data = profile.data[0] if isinstance(profile.data, list) else profile.data
+            stored_hash = user_data.get("senha_hash")
+
+            if not stored_hash or not bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
+                show_error(self, "E-mail ou senha incorretos.")
+                return
+
+            redis_client.set(f"sessao_usuario:{user_data.get('id_perfil')}", email, ex=3600)
+
             self.main_window.current_user = profile.data[0] if isinstance(profile.data, list) else profile.data
             self.main_window.entrar_sistema()
             show_info(self, f"Bem-vindo, {self.main_window.current_user['nome_usuario']}!")
@@ -218,6 +303,9 @@ class TelaAutenticacao(QWidget):
             return
 
         try:
+            salt = bcrypt.gensalt()
+            senha_hash = bcrypt.hashpw(senha.encode("utf-8"), salt).decode("utf-8")
+
             auth_response = supabase.auth.sign_up({
                 "email": email,
                 "password": senha,
@@ -227,6 +315,10 @@ class TelaAutenticacao(QWidget):
             if not auth_response.user:
                 show_error(self, "Não foi possível criar a conta.")
                 return
+
+            supabase.table("perfil").update({
+                "senha_hash": senha_hash
+            }).eq("email", email).execute()
 
             show_info(self, "Conta criada com sucesso! Seu perfil foi registrado automaticamente.")
             self.nome_input.clear()
@@ -240,9 +332,48 @@ class TelaAutenticacao(QWidget):
                 show_error(self, f"Falha no cadastro:\n{e}")
 
 
-# ==============================
-# TELA PRINCIPAL (Conteúdo: Produtos e Listagens)
-# ==============================
+class ProductCard(QFrame):
+    def __init__(self, produto, callback_clique):
+        super().__init__()
+        self.produto = produto
+        self.callback_clique = callback_clique
+        self.setObjectName("card")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(260, 180)
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(6)
+        layout.setContentsMargins(16, 16, 16, 16)
+        
+        self.nome_lbl = QLabel(produto.get("nome", "Produto"))
+        self.nome_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #075985;")
+        
+        desc_text = produto.get("descricao", "")
+        if len(desc_text) > 55:
+            desc_text = desc_text[:52] + "..."
+        self.desc_lbl = QLabel(desc_text)
+        self.desc_lbl.setWordWrap(True)
+        self.desc_lbl.setStyleSheet("font-size: 12px; color: #334155;")
+        
+        preco = float(produto.get("preco", 0))
+        self.preco_lbl = QLabel(f"R$ {preco:.2f}")
+        self.preco_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #16a34a;")
+        
+        estoque = produto.get("estoque", 0)
+        self.estoque_lbl = QLabel(f"Estoque: {estoque}")
+        self.estoque_lbl.setStyleSheet("font-size: 11px; color: #64748b;")
+        
+        layout.addWidget(self.nome_lbl)
+        layout.addWidget(self.desc_lbl)
+        layout.addStretch()
+        layout.addWidget(self.preco_lbl)
+        layout.addWidget(self.estoque_lbl)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.callback_clique(self.produto)
+
+
 class TelaPrincipal(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -252,52 +383,270 @@ class TelaPrincipal(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        self.welcome_label = QLabel("Produtos disponíveis no MongoDB")
+        header_layout = QHBoxLayout()
+        self.welcome_label = QLabel("Catálogo de Produtos:")
         self.welcome_label.setObjectName("title")
+        
+        info_lbl = QLabel("Dica: Clique em qualquer produto para ver detalhes e comprar.")
+        info_lbl.setObjectName("subtitle")
 
-        self.products_table = QTableWidget()
-        self.products_table.setColumnCount(5)
-        self.products_table.setHorizontalHeaderLabels([
-            "Produto", "Descrição", "Preço", "Estoque", "Empresa ID"
-        ])
-        self.products_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.products_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        header_layout.addWidget(self.welcome_label)
+        header_layout.addStretch()
 
-        refresh_button = QPushButton("Atualizar lista de produtos")
-        refresh_button.clicked.connect(self.carregar_produtos)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("background: transparent; border: none;")
+        
+        self.container_widget = QWidget()
+        self.container_widget.setStyleSheet("background: #ffffff")
+        self.grid_layout = QGridLayout(self.container_widget)
+        self.grid_layout.setSpacing(16)
+        self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        
+        self.scroll_area.setWidget(self.container_widget)
 
-        layout.addWidget(self.welcome_label)
-        layout.addWidget(self.products_table)
+        refresh_button = QPushButton("Atualizar Catálogo")
+        refresh_button.clicked.connect(lambda: self.carregar_produtos())
+
+        layout.addLayout(header_layout)
+        layout.addWidget(info_lbl)
+        layout.addWidget(self.scroll_area)
         layout.addWidget(refresh_button)
 
-    def carregar_produtos(self, termo_busca=""):
+    def carregar_produtos(self, termo_busca="", forcar_refresh=False):
         try:
-            query = {}
-            if termo_busca:
-                query = {"nome": {"$regex": termo_busca, "$options": "i"}}
+            while self.grid_layout.count():
+                item = self.grid_layout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
 
-            products = list(products_collection.find(query).sort("criado_em", -1))
-            self.products_table.setRowCount(0)
+            produtos = []
+            cache_key = "catalogo_produtos_cache"
 
-            for product in products:
-                row = self.products_table.rowCount()
-                self.products_table.insertRow(row)
-                self.products_table.setItem(row, 0, QTableWidgetItem(str(product.get("nome", ""))))
-                self.products_table.setItem(row, 1, QTableWidgetItem(str(product.get("descricao", ""))))
-                self.products_table.setItem(row, 2, QTableWidgetItem(f"R$ {product.get('preco', 0):.2f}"))
-                self.products_table.setItem(row, 3, QTableWidgetItem(str(product.get("estoque", 0))))
-                self.products_table.setItem(row, 4, QTableWidgetItem(str(product.get("empresa_id", ""))))
+            if not termo_busca and not forcar_refresh:
+                cached_data = redis_client.get(cache_key)
+                if cached_data:
+                    produtos = json.loads(cached_data)
+
+            if not produtos:
+                query = {}
+                if termo_busca:
+                    query = {"nome": {"$regex": termo_busca, "$options": "i"}}
+
+                produtos = list(products_collection.find(query).sort("criado_em", -1))
+                for p in produtos:
+                    if "_id" in p:
+                        p["_id"] = str(p["_id"])
+
+                if not termo_busca:
+                    redis_client.setex(cache_key, 60, json.dumps(produtos))
+
+            for i, produto in enumerate(produtos):
+                row = i // 3
+                col = i % 3
+                card = ProductCard(produto, self.main_window.abrir_detalhe_produto)
+                self.grid_layout.addWidget(card, row, col)
 
         except Exception as e:
             show_error(self, f"Erro ao carregar produtos:\n{e}")
 
 
-# ==============================
-# TELA DE PERFIL
-# ==============================
+class TelaDetalheProduto(QWidget):
+    def __init__(self, main_window):
+        super().__init__()
+        self.main_window = main_window
+        self.produto_atual = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        card = QFrame()
+        card.setObjectName("card")
+        card.setFixedSize(520, 480)
+        
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(14)
+        card_layout.setContentsMargins(30, 30, 30, 30)
+
+        self.nome_lbl = QLabel("Nome do Produto")
+        self.nome_lbl.setObjectName("title")
+        
+        self.desc_lbl = QLabel("Descrição detalhada do produto...")
+        self.desc_lbl.setWordWrap(True)
+        self.desc_lbl.setStyleSheet("color: #334155; font-size: 14px;")
+
+        self.preco_lbl = QLabel("R$ 0,00")
+        self.preco_lbl.setStyleSheet("font-size: 22px; font-weight: bold; color: #16a34a;")
+
+        self.estoque_lbl = QLabel("Estoque disponível: 0")
+        self.estoque_lbl.setStyleSheet("color: #64748b; font-size: 13px;")
+
+        self.empresa_lbl = QLabel("Empresa ID: -")
+        self.empresa_lbl.setStyleSheet("color: #64748b; font-size: 13px;")
+
+        # Seção de quantidade e carrinho
+        qtd_layout = QHBoxLayout()
+        self.spin_qtd = QSpinBox()
+        self.spin_qtd.setRange(1, 100)
+        self.spin_qtd.setValue(1)
+        
+        btn_adicionar = QPushButton("Adicionar ao Carrinho")
+        btn_adicionar.setObjectName("success")
+        btn_adicionar.clicked.connect(self.adicionar_ao_carrinho)
+
+        qtd_layout.addWidget(QLabel("Quantidade:"))
+        qtd_layout.addWidget(self.spin_qtd)
+        qtd_layout.addWidget(btn_adicionar)
+
+        btn_voltar = QPushButton("Voltar ao Catálogo")
+        btn_voltar.setObjectName("nav_button")
+        btn_voltar.clicked.connect(lambda: self.main_window.mudar_pagina(1))
+
+        card_layout.addWidget(self.nome_lbl)
+        card_layout.addWidget(self.desc_lbl)
+        card_layout.addWidget(self.preco_lbl)
+        card_layout.addWidget(self.estoque_lbl)
+        card_layout.addWidget(self.empresa_lbl)
+        card_layout.addSpacing(10)
+        card_layout.addLayout(qtd_layout)
+        card_layout.addStretch()
+        card_layout.addWidget(btn_voltar)
+
+        layout.addWidget(card)
+
+    def carregar_produto(self, produto):
+        self.produto_atual = produto
+        self.nome_lbl.setText(produto.get("nome", ""))
+        self.desc_lbl.setText(produto.get("descricao", "Sem descrição informada."))
+        self.preco_lbl.setText(f"R$ {float(produto.get('preco', 0)):.2f}")
+        self.estoque_lbl.setText(f"Estoque disponível: {produto.get('estoque', 0)}")
+        self.empresa_lbl.setText(f"ID da Empresa: {produto.get('empresa_id', 'N/A')}")
+        self.spin_qtd.setValue(1)
+
+    def adicionar_ao_carrinho(self):
+        if not self.produto_atual:
+            return
+        qtd = self.spin_qtd.value()
+        self.main_window.carrinho_window.adicionar_item(self.produto_atual, qtd)
+        show_info(self, f"Adicionado ao carrinho: {qtd}x {self.produto_atual.get('nome')}")
+
+
+class CarrinhoWindow(QWidget):
+    def __init__(self, main_window):
+        super().__init__()
+        self.main_window = main_window
+        self.itens_carrinho = []
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        title = QLabel("Seu Carrinho de Compras")
+        title.setObjectName("title")
+
+        self.carrinho_table = QTableWidget()
+        self.carrinho_table.setColumnCount(4)
+        self.carrinho_table.setHorizontalHeaderLabels([
+            "Produto", "Preço Unitário", "Quantidade", "Subtotal"
+        ])
+        self.carrinho_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.carrinho_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        footer_layout = QHBoxLayout()
+        self.total_label = QLabel("Total: R$ 0.00")
+        self.total_label.setObjectName("title")
+
+        btn_remover = QPushButton("Remover Item")
+        btn_remover.setObjectName("danger")
+        btn_remover.clicked.connect(self.remover_item)
+
+        btn_whatsapp = QPushButton("Finalizar Pedido via WhatsApp")
+        btn_whatsapp.setObjectName("success")
+        btn_whatsapp.clicked.connect(self.enviar_whatsapp)
+
+        footer_layout.addWidget(self.total_label)
+        footer_layout.addStretch()
+        footer_layout.addWidget(btn_remover)
+        footer_layout.addWidget(btn_whatsapp)
+
+        layout.addWidget(title)
+        layout.addWidget(self.carrinho_table)
+        layout.addLayout(footer_layout)
+
+    def adicionar_item(self, produto, quantidade):
+        encontrado = False
+        for item in self.itens_carrinho:
+            if str(item["produto"].get("_id")) == str(produto.get("_id")):
+                item["quantidade"] += quantidade
+                encontrado = True
+                break
+        
+        if not encontrado:
+            self.itens_carrinho.append({
+                "produto": produto,
+                "quantidade": quantidade
+            })
+        
+        self.atualizar_tabela()
+
+    def remover_item(self):
+        selected_row = self.carrinho_table.currentRow()
+        if selected_row < 0:
+            show_error(self, "Selecione um item no carrinho para remover.")
+            return
+
+        del self.itens_carrinho[selected_row]
+        self.atualizar_tabela()
+
+    def atualizar_tabela(self):
+        self.carrinho_table.setRowCount(0)
+        total_geral = 0.0
+
+        for item in self.itens_carrinho:
+            prod = item["produto"]
+            qtd = item["quantidade"]
+            preco = float(prod.get("preco", 0))
+            subtotal = preco * qtd
+            total_geral += subtotal
+
+            row = self.carrinho_table.rowCount()
+            self.carrinho_table.insertRow(row)
+            self.carrinho_table.setItem(row, 0, QTableWidgetItem(str(prod.get("nome", ""))))
+            self.carrinho_table.setItem(row, 1, QTableWidgetItem(f"R$ {preco:.2f}"))
+            self.carrinho_table.setItem(row, 2, QTableWidgetItem(str(qtd)))
+            self.carrinho_table.setItem(row, 3, QTableWidgetItem(f"R$ {subtotal:.2f}"))
+
+        self.total_label.setText(f"Total: R$ {total_geral:.2f}")
+
+    def enviar_whatsapp(self):
+        if not self.itens_carrinho:
+            show_error(self, "Seu carrinho está vazio!")
+            return
+
+        texto_msg = "Olá, gostaria de pedir:\n"
+        total_geral = 0.0
+
+        for item in self.itens_carrinho:
+            prod = item["produto"]
+            qtd = item["quantidade"]
+            preco = float(prod.get("preco", 0))
+            subtotal = preco * qtd
+            total_geral += subtotal
+            texto_msg += f"- {qtd}x {prod.get('nome')} (R$ {subtotal:.2f})\n"
+
+        texto_msg += f"\nTotal: R$ {total_geral:.2f}"
+
+        msg_codificada = urllib.parse.quote(texto_msg)
+        url_whatsapp = f"https://wa.me/{WHATSAPP_NUMERO}?text={msg_codificada}"
+
+        QDesktopServices.openUrl(QUrl(url_whatsapp))
+        show_info(self, "Redirecionando para o WhatsApp...")
+
+
 class ProfileWindow(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -316,7 +665,7 @@ class ProfileWindow(QWidget):
         card_esq.setObjectName("card")
         v_esq = QVBoxLayout(card_esq)
         v_esq.addWidget(QLabel("<b>Status da Conta</b>"))
-        lbl_avatar = QLabel("👤 [Ativo no Sistema]")
+        lbl_avatar = QLabel("[Ativo no Sistema]")
         lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         v_esq.addWidget(lbl_avatar)
         v_esq.addStretch()
@@ -352,9 +701,6 @@ class ProfileWindow(QWidget):
         self.created_label.setText(str(user.get("criado_em", "-")))
 
 
-# ==============================
-# TELA DE EMPRESAS
-# ==============================
 class CompaniesWindow(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -461,7 +807,6 @@ class CompaniesWindow(QWidget):
             return
 
         try:
-            # Correção do erro single() aplicando .execute() direto e lendo o retorno da lista
             response = (
                 supabase.table("empresa")
                 .insert({
@@ -498,19 +843,26 @@ class CompaniesWindow(QWidget):
             show_error(self, f"Erro ao salvar empresa:\n{e}")
 
 
-# ==============================
-# JANELA PRINCIPAL COM BARRA PERMANENTE DO FIGMA
-# ==============================
+#App:
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("CentroMercados")
         self.setWindowIcon(QIcon(str(ICON_PATH)))
-        self.resize(1150, 720)
+        self.resize(1200, 750)
         self.setStyleSheet(ESTILO)
 
         self.current_user = None
+
+        self.background = QWidget(self)
+        self.background.setObjectName("background")
+        self.background.setGeometry(self.rect())
+
+        self.background_effect = QGraphicsBlurEffect()
+        self.background_effect.setBlurRadius(24)
+        self.background.setGraphicsEffect(self.background_effect)
+        self.background.lower()
 
         if not testar_conexao() and teste_mongo():
             QMessageBox.warning(
@@ -518,39 +870,29 @@ class App(QMainWindow):
                 "Alguns serviços (MongoDB/Redis) podem estar indisponíveis."
             )
 
-        # Widget central raiz contendo a barra permanente + o StackedWidget das telas
         central_widget = QWidget()
         root_layout = QVBoxLayout(central_widget)
         root_layout.setContentsMargins(16, 16, 16, 16)
         root_layout.setSpacing(12)
 
-        # -------------------------------------------------------------
-        # BARRA SUPERIOR PERMANENTE (Estilo Figma)
-        # -------------------------------------------------------------
         self.top_bar = QFrame()
         self.top_bar.setObjectName("topbar")
         top_layout_bar = QHBoxLayout(self.top_bar)
-        top_layout_bar.setContentsMargins(8, 4, 8, 4)
+        top_layout_bar.setContentsMargins(12, 6, 12, 6)
 
-        # 1. Logo / Ícone do App + Nome
-        logo_layout = QHBoxLayout()
+
         self.logo_icon_label = QLabel()
         if ICON_PATH.exists():
-            self.logo_icon_label.setPixmap(QIcon(str(ICON_PATH)).pixmap(28, 28))
-        logo_title = QLabel("CentroMercados")
-        logo_title.setObjectName("title")
-        logo_layout.addWidget(self.logo_icon_label)
-        logo_layout.addWidget(logo_title)
+            self.logo_icon_label.setPixmap(QIcon(str(ICON_PATH)).pixmap(30, 30))
 
-        # 2. Barra de Pesquisa Centralizada (MongoDB)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Pesquisar produtos no MongoDB...")
         self.search_input.setFixedWidth(320)
         self.search_input.textChanged.connect(self.executar_pesquisa_mongodb)
 
-        # 3. Botões de Navegação e Ações
         nav_buttons_layout = QHBoxLayout()
-        
+        nav_buttons_layout.setSpacing(8)
+
         self.btn_produtos = QPushButton("Produtos")
         self.btn_produtos.setObjectName("nav_button")
         self.btn_produtos.clicked.connect(lambda: self.mudar_pagina(1))
@@ -558,6 +900,10 @@ class App(QMainWindow):
         self.btn_empresas = QPushButton("Empresas")
         self.btn_empresas.setObjectName("nav_button")
         self.btn_empresas.clicked.connect(lambda: self.mudar_pagina(3))
+
+        self.btn_carrinho = QPushButton("🛒 Carrinho")
+        self.btn_carrinho.setObjectName("success")
+        self.btn_carrinho.clicked.connect(lambda: self.mudar_pagina(4))
 
         self.btn_perfil = QPushButton("Meu Perfil")
         self.btn_perfil.setObjectName("nav_button")
@@ -569,45 +915,49 @@ class App(QMainWindow):
 
         nav_buttons_layout.addWidget(self.btn_produtos)
         nav_buttons_layout.addWidget(self.btn_empresas)
+        nav_buttons_layout.addWidget(self.btn_carrinho)
         nav_buttons_layout.addWidget(self.btn_perfil)
         nav_buttons_layout.addWidget(self.btn_sair)
 
-        top_layout_bar.addLayout(logo_layout)
-        top_layout_bar.addStretch()
+
+        top_layout_bar.addWidget(self.logo_icon_label)
+        top_layout_bar.addStretch(1)
         top_layout_bar.addWidget(self.search_input)
-        top_layout_bar.addStretch()
+        top_layout_bar.addStretch(1)
         top_layout_bar.addLayout(nav_buttons_layout)
 
-        # Inicialmente oculta a barra superior na tela de login
+        top_layout_bar.setAlignment(self.logo_icon_label, Qt.AlignmentFlag.AlignVCenter)
+        top_layout_bar.setAlignment(self.search_input, Qt.AlignmentFlag.AlignVCenter)
+
         self.top_bar.setVisible(False)
 
-        # -------------------------------------------------------------
-        # PILHA DE TELAS (QStackedWidget)
-        # -------------------------------------------------------------
+
         self.stack = QStackedWidget()
 
         self.auth_window = TelaAutenticacao(self)
         self.main_window = TelaPrincipal(self)
         self.profile_window = ProfileWindow(self)
         self.companies_window = CompaniesWindow(self)
+        self.carrinho_window = CarrinhoWindow(self)
+        self.detalhe_window = TelaDetalheProduto(self)
 
         self.stack.addWidget(self.auth_window)      # Índice 0: Login
-        self.stack.addWidget(self.main_window)      # Índice 1: Principal (Produtos)
+        self.stack.addWidget(self.main_window)      # Índice 1: Principal (Catálogo Grid 3x3)
         self.stack.addWidget(self.profile_window)   # Índice 2: Perfil
         self.stack.addWidget(self.companies_window) # Índice 3: Empresas
+        self.stack.addWidget(self.carrinho_window)  # Índice 4: Carrinho / WhatsApp
+        self.stack.addWidget(self.detalhe_window)   # Índice 5: Página de Produto Individual
 
         root_layout.addWidget(self.top_bar)
         root_layout.addWidget(self.stack)
         self.setCentralWidget(central_widget)
 
     def entrar_sistema(self):
-        """Exibe a barra superior e vai para a tela principal"""
         self.top_bar.setVisible(True)
         self.main_window.carregar_produtos()
         self.stack.setCurrentIndex(1)
 
     def mudar_pagina(self, index):
-        """Controla a navegação pelos botões da barra superior permanente"""
         if index == 1:
             self.main_window.carregar_produtos()
         elif index == 2:
@@ -617,14 +967,20 @@ class App(QMainWindow):
         
         self.stack.setCurrentIndex(index)
 
+    def abrir_detalhe_produto(self, produto):
+        self.detalhe_window.carregar_produto(produto)
+        self.stack.setCurrentIndex(5)
+
     def executar_pesquisa_mongodb(self, texto):
-        """Dispara a busca em tempo real no MongoDB direto pela barra de pesquisa fixa"""
-        # Se estivermos na tela de produtos (índice 1), atualiza a tabela com o filtro
         if self.stack.currentIndex() == 1:
+            if self.current_user:
+                redis_client.set(f"ultima_busca:{self.current_user.get('id_perfil')}", texto, ex=300)
             self.main_window.carregar_produtos(termo_busca=texto)
 
     def logout(self):
         try:
+            if self.current_user:
+                redis_client.delete(f"sessao_usuario:{self.current_user.get('id_perfil')}")
             supabase.auth.sign_out()
         except Exception:
             pass
