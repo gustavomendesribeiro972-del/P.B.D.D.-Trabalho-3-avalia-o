@@ -31,7 +31,7 @@ def testar_conexao():
         resposta = supabase.auth.get_session()
         
         # Se não houver erro, a conexão foi bem-sucedida
-        print("Conexão estabelecida com sucesso!")
+        print("Conexão estabelecida (SUPA) com sucesso!")
         
     except Exception as e:
         print("Falha na conexão com o Supabase.")

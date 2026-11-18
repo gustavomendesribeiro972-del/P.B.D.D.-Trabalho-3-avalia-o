@@ -16,6 +16,7 @@ redis_client = redis.Redis.from_url(
 )
 
 try:
+    print("Tentando conectar ao Redis...")
     if redis_client.ping():
         print("Conexão Python <-> Redis estabelecida!")
 
@@ -23,7 +24,7 @@ try:
     valor = redis_client.get("teste_integracao")
 
     assert valor == "funcionando"
-    print("Leitura e escrita no Redis confirmadas.")
+    print("Conexão estabelecida (REDIS) com sucesso!")
 
     redis_client.delete("teste_integracao")
 
