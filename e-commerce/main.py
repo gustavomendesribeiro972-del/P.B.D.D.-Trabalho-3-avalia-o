@@ -398,7 +398,7 @@ class TelaCadastro(QWidget):
         username = self.nome_input.text().strip()
         email = self.email_input.text().strip()
         senha = self.senha_input.text()
-        tipo = "admin" if self.tipo_conta_combo.currentIndex() == 1 else "cliente"
+        tipo = "empresario" if self.tipo_conta_combo.currentIndex() == 1 else "cliente"
 
         if not email or not senha or not username:
             show_error(self, "Preencha todos os campos.")
@@ -1486,7 +1486,7 @@ class App(QMainWindow):
             self.logo_icon_label.setPixmap(QIcon(str(BASE_DIR / "static" / "images" / "icon2.png")).pixmap(60, 60))
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Pesquisar produtos no MongoDB...")
+        self.search_input.setPlaceholderText("🔍 Pesquisar...")
         self.search_input.setFixedWidth(320)
         self.search_input.textChanged.connect(self.executar_pesquisa_mongodb)
 
