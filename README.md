@@ -1,4 +1,7 @@
 # P.B.D.D. Trabalho para a 3 avaliação
+* Prof. - Anderson Soares Costa
+
+* Aluno. - Guilherme M. Ribeiro
 
 ## CentroMercados
 
